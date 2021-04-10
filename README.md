@@ -49,30 +49,33 @@ These are the settings:
 
 ![](https://github.com/wooni005/alpha-ess-modbus_mqtt/blob/main/img/Modbus-Poll-Tool-settings.png)
 
-And this was my result (not working:
+And this was my result (not working):
 
 ![](https://github.com/wooni005/alpha-ess-modbus_mqtt/blob/main/img/Modbus-Poll-Tool-results.png)
 
 **3 - Check cable inside**
 
-**Warning! **Only do this in cooperation with Alpha-ESS support (waranty) and be carefull with the high voltages in the Control box!
-
-![](https://github.com/wooni005/alpha-ess-modbus_mqtt/blob/main/img/Alpha-ESS-ControlBox-motherboard-layout.png)
+**Warning!** Only do this in cooperation with Alpha-ESS support (waranty) and be carefull with the high voltages in the Control box!
 
 The internal UTP cable from the DISPATCH connector needs to be connected to USART4.
 
+![](https://github.com/wooni005/alpha-ess-modbus_mqtt/blob/main/img/Alpha-ESS-ControlBox-motherboard-layout.png)
+
+
+
 **Result**
 
-Still didn't work and the dealer (ProSolar) in Czech Republic replied that I need to buy a Loxone to get it working. End of discussion... But I don´t need the Loxone system, I´m using Home Assistant. Also the Loxone system is pretty expensive to test if this will work or not. I understand that as a firm you don't want to support all hobbyists, but I'm doing this kind of work for 25 years :-). Also said that to ProSolar, but no answer to that. 
+Still didn't work and the dealer (ProSolar) in Czech Republic replied that I need to buy a [Loxone system](https://www.loxone.com/cscz/question/integrace-baterioveho-systemu-storion-pro-ukladani-energie-z-fotovoltaiky/) to get it working. End of discussion... But I don´t need the Loxone system, I´m running Home Assistant and my own software for home automation. The modbus is an universal bus and should also work with other systems. Also the Loxone system is pretty expensive to test if this will work or not. I understand that as a company you don't want to support all hobbyists, but I'm doing this kind of work for more than 25 years :-). Also said that to ProSolar, but no answer to that. 
 
-Finally my story had a happy end, but I needed to invest a lot of of time to solve this. It took me half a year to convince the dealer (ProSolar) that the problem of the non-working modbus was not on my side.
+Finally my story had a happy end, but I needed to invest a lot of of time to solve this. In total it took me half a year to convince the dealer (ProSolar) that the problem of the non-working modbus was not on my side.
 
-Finally the Control box is replaced and it all worked immediately. Jippie!
+Finally the Control box is replaced and it all worked immediately. Yippie!
+Don't get me wrong, I'm a happy user of the Storion T10 and the system has a good price-performance ratio. The support could be better.
 
-**Work-arround**
+**Work-around**
 
 There are more ways to get the Storion T10 data out of the system:
 
-* Make use of my [Alpha-ess.com web scraping](https://github.com/wooni005/alpha-ess-web_mqtt). The information is refreshed every 5 min. But I don't know if Alpha-ESS is happy with this.
+* Make use of [Alpha-ess.com web scraping](https://github.com/wooni005/alpha-ess-web_mqtt). The web information is refreshed every 5 min. But I don't know if Alpha-ESS is happy with this load on their website if you're running this 24/7, but if you've a refresh rate of 30-60 minutes I think that's not a problem.
 
 * The beta version of Modbus TCP, which is using the LAN interface to access the internal Storion T10 data, but I didn't see it working yet.
