@@ -22,11 +22,15 @@ To connect to the Storion T10, you need an UTP cable T-568:
 
 
 
-Connect to the RS485 USB adapter:
+Connect to the UTP cable to the connector of the RS485 USB adapter:
 
-* BPin3 (Green-white) is connected to the B
-  Pin6 The PIN3 of LAN cable ( Green-white colour)
-  -->RS485B; PIN6 of LAN cable ( Green colour) -->RS485A
+* Into B goes the green-white wire (pin 3)
+
+* Into A goes the green wire (pin 6)
+
+
+
+## Problems
 
 https://www.loxone.com/cscz/question/integrace-baterioveho-systemu-storion-pro-ukladani-energie-z-fotovoltaiky/
 With this software there is no need to invest into a LOXONE device, which is a sort of supported and advised by Alpha-ESS dealer ProSolar: https://www.loxone.com/cscz/question/integrace-baterioveho-systemu-storion-pro-ukladani-energie-z-fotovoltaiky/
