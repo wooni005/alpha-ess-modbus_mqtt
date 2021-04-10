@@ -30,6 +30,10 @@ Connect to the UTP cable to the connector of the RS485 USB adapter:
 
 Connect other side ()the RJ45 connector) to DISPATCH on the Control box of the Storion T10.
 
+## Testing
+
+You can use the [storion_terminal_rs485.py](https://github.com/wooni005/alpha-ess-modbus_mqtt/blob/main/storion_terminal_rs485.py) program to test if it's working.
+
 ## Problems
 
 ### Checks if it doesn't work
@@ -55,19 +59,17 @@ And this was my result (not working):
 
 **3 - Check cable inside**
 
-**Warning!** Only do this in cooperation with Alpha-ESS support (waranty) and be carefull with the high voltages in the Control box!
+**Warning!** Only do this in cooperation with Alpha-ESS support (for waranty reasons) and be careful with the high voltages in the Control box!
 
 The internal UTP cable from the DISPATCH connector needs to be connected to USART4.
 
 ![](https://github.com/wooni005/alpha-ess-modbus_mqtt/blob/main/img/Alpha-ESS-ControlBox-motherboard-layout.png)
 
-
-
 **Result**
 
 Still didn't work and the dealer (ProSolar) in Czech Republic replied that I need to buy a [Loxone system](https://www.loxone.com/cscz/question/integrace-baterioveho-systemu-storion-pro-ukladani-energie-z-fotovoltaiky/) to get it working. End of discussion... But I don´t need the Loxone system, I´m running Home Assistant and my own software for home automation. The modbus is an universal bus and should also work with other systems. Also the Loxone system is pretty expensive to test if this will work or not. I understand that as a company you don't want to support all hobbyists, but I'm doing this kind of work for more than 25 years :-). Also said that to ProSolar, but no answer to that. 
 
-Finally my story had a happy end, but I needed to invest a lot of of time to solve this. In total it took me half a year to convince the dealer (ProSolar) that the problem of the non-working modbus was not on my side.
+I also bought a Moxa RS422/RS485 converter, which I was used to work with from my previous work. This device is working via the LAN to communicate to RS485/modbus. Same result of course, it didn't work also. You can use the [storion_terminal_moxa.py](https://github.com/wooni005/alpha-ess-modbus_mqtt/blob/main/storion_terminal_moxa.py) program to use the Moxa converter.
 
 Finally the Control box is replaced and it all worked immediately. Yippie!
 Don't get me wrong, I'm a happy user of the Storion T10 and the system has a good price-performance ratio. The support could be better.
