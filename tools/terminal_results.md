@@ -1,7 +1,9 @@
 # Meter
+
 Kijken als de softare gaat draaien
 
 # Accu
+
 ->Battery voltage: 213.5 V
 ->Battery current: 0.0 A
 ->Battery SOC: 100.0 %
@@ -37,6 +39,7 @@ Battery fault: 0
 ?->Charge energy from grid: 0.8 kWh
 
 # Inverter
+
 Inverter voltage L1: 237.4 V
 Inverter voltage L2: 238.0 V
 Inverter voltage L3: 238.6 V
