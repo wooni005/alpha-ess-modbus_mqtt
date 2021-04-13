@@ -353,6 +353,11 @@ def serialPortThread(serialPortDeviceName, serialPort):
                     val = struct.unpack(">i", recvMsg[i:i + 4])[0]
                     print("Charge energy from grid: %.1f kWh" % (float(val) / 10))
 
+                    # From here protocol version 1.17
+                    # i = 79 #0x126
+                    # val = struct.unpack(">h", recvMsg[i:i + 2])[0]
+                    # print("Battery power: %.1f W" % val)
+
                 # Received inverter data
                 elif msgLen == 101:
                     printHexByteString(recvMsg)
@@ -581,7 +586,7 @@ time.sleep(2)
 # BatteryLevel: 0x102
 testMsg     = "\x55\x03\x00\x00\x00\x0D" #, 0x89, 0xDB]
 meterMsg    = "\x55\x03\x00\x00\x00\x16"
-batteryMsg  = "\x55\x03\x01\x00\x00\x26"
+batteryMsg  = "\x55\x03\x01\x00\x00\x26" #0x37
 inverterMsg = "\x55\x03\x04\x00\x00\x30"
 systemMsg   = "\x55\x03\x07\x00\x00\x06"
 
