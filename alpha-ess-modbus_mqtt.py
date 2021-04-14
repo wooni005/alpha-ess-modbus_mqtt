@@ -24,7 +24,7 @@ sendQueue = Queue(maxsize=0)
 current_sec_time = lambda: int(round(time.time()))
 current_milli_time = lambda: int(round(time.time() * 1000))
 usleep = lambda x: time.sleep(x / 1000000.0)
-oldTimeout = 0
+oldTimeout = current_sec_time()
 
 testMsg     = "\x55\x03\x00\x00\x00\x0D" #, 0x89, 0xDB]
 meterMsg    = "\x55\x03\x00\x00\x00\x16"
@@ -154,6 +154,9 @@ def serialPortThread(serialPortDeviceName, serialPort):
                     printHexByteString(recvMsg)
                     continue
 
+                # Reset the Rx timeout timer
+                oldTimeout = current_sec_time()
+
                 # printHexByteString(recvMsg)
                 # Received meter data
                 if msgLen == 49:
@@ -229,68 +232,50 @@ def serialPortThread(serialPortDeviceName, serialPort):
 
                     i = 9
                     val = struct.unpack(">h", recvMsg[i:i + 2])[0]
-                    sensorData['Battery-status'] = val
+                    sensorData['Status'] = val
                     # print("Battery status: %d" % val)
 
                     i = 11
                     val = struct.unpack(">h", recvMsg[i:i + 2])[0]
-                    sensorData['Battery-relay-status'] = val
+                    sensorData['Relay-status'] = val
                     # print("Battery relay status: %d" % val)
 
-                    i = 13
-                    val = struct.unpack(">h", recvMsg[i:i + 2])[0]
-                    sensorData['PackID-Umin'] = val
-                    # print("Pack ID of min cell voltage: %d" % val)
+                    # i = 13
+                    # val = struct.unpack(">h", recvMsg[i:i + 2])[0]
+                    # sensorData['PackID-Umin'] = val
+                    # # print("Pack ID of min cell voltage: %d" % val)
 
-                    i = 15
-                    val = struct.unpack(">h", recvMsg[i:i + 2])[0]
-                    sensorData['CellID-Umin'] = val
-                    # print("Cell ID of min cell voltage: %d" % val)
+                    # i = 15
+                    # val = struct.unpack(">h", recvMsg[i:i + 2])[0]
+                    # sensorData['CellID-Umin'] = val
+                    # # print("Cell ID of min cell voltage: %d" % val)
 
                     i = 17
                     val = struct.unpack(">h", recvMsg[i:i + 2])[0]
                     sensorData['Umin'] = float(val) / 1000
                     # print("Min cell voltage: %.3f V" % (float(val) / 1000))
 
-                    i = 19
-                    val = struct.unpack(">h", recvMsg[i:i + 2])[0]
-                    sensorData['PackID-Umax'] = val
-                    # print("Pack ID of max cell voltage: %d" % val)
+                    # i = 19
+                    # val = struct.unpack(">h", recvMsg[i:i + 2])[0]
+                    # sensorData['PackID-Umax'] = val
+                    # # print("Pack ID of max cell voltage: %d" % val)
 
-                    i = 21
-                    val = struct.unpack(">h", recvMsg[i:i + 2])[0]
-                    sensorData['CellID-Umax'] = val
-                    # print("Cell ID of max cell voltage: %d" % val)
+                    # i = 21
+                    # val = struct.unpack(">h", recvMsg[i:i + 2])[0]
+                    # sensorData['CellID-Umax'] = val
+                    # # print("Cell ID of max cell voltage: %d" % val)
 
                     i = 23
                     val = struct.unpack(">h", recvMsg[i:i + 2])[0]
                     sensorData['Umax'] = float(val) / 1000
                     # print("Max cell voltage: %.3f V" % (float(val) / 1000))
 
-                    i = 25 #0x10B
-                    val = struct.unpack(">h", recvMsg[i:i + 2])[0]
-                    sensorData['PackID-Tmin'] = val
-                    # print("Pack ID of min cell temp: %d" % val)
-
-                    i = 27 #0x10C
-                    val = struct.unpack(">h", recvMsg[i:i + 2])[0]
-                    sensorData['CellID-Tmin'] = val
-                    # print("Cell ID of min cell temp: %d" % val)
 
                     i = 29 #0x10D
                     val = struct.unpack(">h", recvMsg[i:i + 2])[0]
                     sensorData['Tmin'] = float(val) / 10
                     # print("Min cell temp: %.1f ℃" % (float(val) / 10))
 
-                    i = 31 #0x10E
-                    val = struct.unpack(">h", recvMsg[i:i + 2])[0]
-                    sensorData['PackID-Tmax'] = val
-                    # print("Pack ID of max cell temp: %d" % val)
-
-                    i = 33 #0x10F
-                    val = struct.unpack(">h", recvMsg[i:i + 2])[0]
-                    sensorData['CellID-Tmax'] = val
-                    # print("Cell ID of max cell temp: %d" % val)
 
                     i = 35 #0x110
                     val = struct.unpack(">h", recvMsg[i:i + 2])[0]
@@ -379,17 +364,17 @@ def serialPortThread(serialPortDeviceName, serialPort):
                     sensorData = {}
                     i = 3
                     val = struct.unpack(">h", recvMsg[i:i + 2])[0]
-                    sensorData['Uinverter-L1'] = float(val) / 10
+                    sensorData['Uinv-L1'] = float(val) / 10
                     # print("Inverter voltage L1: %.1f V" % (float(val) / 10))
 
                     i = 5
                     val = struct.unpack(">h", recvMsg[i:i + 2])[0]
-                    sensorData['Uinverter-L2'] = float(val) / 10
+                    sensorData['Uinv-L2'] = float(val) / 10
                     # print("Inverter voltage L2: %.1f V" % (float(val) / 10))
 
                     i = 7
                     val = struct.unpack(">h", recvMsg[i:i + 2])[0]
-                    sensorData['Uinverter-L3'] = float(val) / 10
+                    sensorData['Uinv-L3'] = float(val) / 10
                     # print("Inverter voltage L3: %.1f V" % (float(val) / 10))
 
                     # i = 9
@@ -418,22 +403,22 @@ def serialPortThread(serialPortDeviceName, serialPort):
 
                     i = 27 #0x40C
                     val = struct.unpack(">i", recvMsg[i:i + 4])[0]
-                    sensorData['Pinverter-total'] = val
+                    sensorData['Pinv'] = val
                     # print("Inverter power total: %d W" % val)
 
                     i = 31
                     val = struct.unpack(">h", recvMsg[i:i + 2])[0]
-                    sensorData['Ubackup-L1'] = float(val) / 10
+                    sensorData['Uback-L1'] = float(val) / 10
                     # print("Inverter backup voltage L1: %.1f V" % (float(val) / 10))
 
                     i = 33
                     val = struct.unpack(">h", recvMsg[i:i + 2])[0]
-                    sensorData['Ubackup-L2'] = float(val) / 10
+                    sensorData['Uback-L2'] = float(val) / 10
                     # print("Inverter backup voltage L2: %.1f V" % (float(val) / 10))
 
                     i = 35
                     val = struct.unpack(">h", recvMsg[i:i + 2])[0]
-                    sensorData['Ubackup-L3'] = float(val) / 10
+                    sensorData['Uback-L3'] = float(val) / 10
                     # print("Inverter backup voltage L3: %.1f V" % (float(val) / 10))
 
                     # i = 37
@@ -462,7 +447,7 @@ def serialPortThread(serialPortDeviceName, serialPort):
 
                     i = 55
                     val = struct.unpack(">i", recvMsg[i:i + 4])[0]
-                    sensorData['Pbackup-total'] = val
+                    sensorData['Pback'] = val
                     # print("Inverter backup power total: %d W" % val)
 
                     # i = 59
@@ -511,7 +496,7 @@ def serialPortThread(serialPortDeviceName, serialPort):
                     i = 85
                     val = struct.unpack(">h", recvMsg[i:i + 2])[0]
                     inverterTemp = float(val) / 10
-                    sensorData['Inverter-temp'] = inverterTemp
+                    sensorData['TempInv'] = inverterTemp
 
                     i = 89
                     val = struct.unpack(">i", recvMsg[i:i + 4])[0]
@@ -523,9 +508,9 @@ def serialPortThread(serialPortDeviceName, serialPort):
                     sensorData['Fault'] = val
                     # print("Inverter fault: %d" % val)
 
-                    i = 97
-                    val = struct.unpack(">i", recvMsg[i:i + 4])[0]
-                    sensorData['PVtotal'] = float(val) / 10
+                    # i = 97
+                    # val = struct.unpack(">i", recvMsg[i:i + 4])[0]
+                    # sensorData['Epv'] = float(val) / 10
                     # print("Total PV Energy: %.1f kWh" % (float(val) / 10))
 
                     mqtt_publish.single("huis/AlphaEss/Inverter/power", json.dumps(sensorData, separators=(', ', ':')), hostname=settings.MQTT_ServerIP, retain=True)
@@ -558,11 +543,6 @@ def serialPortThread(serialPortDeviceName, serialPort):
                     print("Unknown data msg received")
                     printHexByteString(recvMsg)
 
-                # Check the Rx timeout
-                if (current_sec_time() - oldTimeout) > 300:
-                    # Reset the rx timeout timer
-                    oldTimeout = current_sec_time()
-
             # Check if there is any message to send
             if not sendQueue.empty():
                 serialPort.setRTS(1) # Enable RS485 send
@@ -576,12 +556,8 @@ def serialPortThread(serialPortDeviceName, serialPort):
                 usleep(msgLen * 1041.6667)
                 # msleep(8)
 
-                # if sendMsg != "":
-                #     serialPort.write(sendMsg)
                 serialPort.setRTS(0) # Disable RS485 send
                 # print("Tx ready")
-
-            # time.sleep(0.05)
 
         # In case the message contains unusual data
         except ValueError as arg:
@@ -615,8 +591,7 @@ def sendModbusMsg(sendMsg, modBusAddr):
     # printHexString(sendMsg)
     request = sendMsg + modbus.calculateCRC(sendMsg)
     # printHexString(request)
-    sendQueue.put(request.encode())
-    # sock.send(request.encode('ascii'))
+    sendQueue.put(request.encode('latin'))
 
 
 def print_time(delay):
@@ -630,7 +605,7 @@ def print_time(delay):
 ###
 # Initalisation ####
 ###
-# logger.initLogger(settings.LOG_FILENAME)
+logger.initLogger(settings.LOG_FILENAME)
 
 # Init signal handler, because otherwise Ctrl-C does not work
 signal.signal(signal.SIGINT, signal_handler)
@@ -681,7 +656,7 @@ try:
             # Get inverter data
             sendModbusMsg(inverterMsg, 0x55)
 
-        # Get meter status every 5 sec
+        # Get meter status every 30 sec
         if sendGetMeterStatusTimer >= settings.SEND_METER_MSG_TIMER:
             sendGetMeterStatusTimer = 0
 
@@ -702,11 +677,19 @@ try:
             tempData['Temperature'] = "%1.1f" % inverterTemp
             mqtt_publish.single("huis/AlphaEss/Temp-Inverter/temp", json.dumps(tempData, separators=(', ', ':')), hostname=settings.MQTT_ServerIP, retain=True)
 
-        sendGetInverterStatusTimer = sendGetInverterStatusTimer + 1 #[100ms]
-        sendGetMeterStatusTimer = sendGetMeterStatusTimer + 1 #[100ms]
-        sendGetBatteryStatusTimer = sendGetBatteryStatusTimer + 1 #[100ms]
-        sendInverterTempTimer = sendInverterTempTimer + 1 #[100ms]
+        sendGetInverterStatusTimer += 1 #[100ms]
+        sendGetMeterStatusTimer += 1 #[100ms]
+        sendGetBatteryStatusTimer += 1 #[100ms]
+        sendInverterTempTimer += 1 #[100ms]
         time.sleep(0.1) #[100ms]
+
+        # Check the JeeLink Rx timeout
+        if (current_sec_time() - oldTimeout) > 300:
+            # Reset the JeeLink Rx timeout timer
+            oldTimeout = current_sec_time()
+
+            #Report failure to Home Logic system check
+            serviceReport.sendFailureToHomeLogic(serviceReport.ACTION_RESTART, 'Serial port timeout (5 min no data received)!')
 
 finally:
     if serialPort is not None:
