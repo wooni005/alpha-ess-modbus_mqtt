@@ -30,9 +30,19 @@ Connect to the UTP cable to the connector of the RS485 USB adapter:
 
 Connect other side ()the RJ45 connector) to DISPATCH on the Control box of the Storion T10.
 
-## Testing
+## Testing communications
 
 You can use the [storion_terminal_rs485.py](https://github.com/wooni005/alpha-ess-modbus_mqtt/blob/main/tools/storion_terminal_rs485.py) program to test if it's working.
+
+## Install service
+
+```bash
+sudo cp alpha-ess-modbus_mqtt.service /etc/systemd/system
+sudo cp alpha-ess-modbus_mqtt.service /etc/systemd/system
+sudo cp alpha-ess-modbus_mqtt.service /etc/systemd/system
+```
+
+
 
 ## Problems
 
