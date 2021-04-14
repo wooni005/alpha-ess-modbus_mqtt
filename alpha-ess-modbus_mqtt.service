@@ -1,0 +1,13 @@
+[Unit]
+Description=Alpha ESS Storion T10 modbus to MQTT
+After=syslog.target network.target mosquitto.target
+
+[Service]
+Type=simple
+ExecStart=/usr/bin/python3 /home/pi/scripts/python/alpha-ess-modbus_mqtt/alpha-ess-modbus_mqtt.py
+User=pi
+Restart=always
+RestartSec=2s
+
+[Install]
+WantedBy=multi-user.target
