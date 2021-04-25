@@ -22,9 +22,7 @@ import serviceReport
 
 sendQueue = Queue(maxsize=0)
 current_sec_time = lambda: int(round(time.time()))
-current_milli_time = lambda: int(round(time.time() * 1000))
 usleep = lambda x: time.sleep(x / 1000000.0)
-oldTimeout = current_sec_time()
 
 testMsg     = "\x55\x03\x00\x00\x00\x0D" #, 0x89, 0xDB]
 meterMsg    = "\x55\x03\x00\x00\x00\x16"
@@ -86,6 +84,7 @@ def on_message_homelogic(client, userdata, msg):
 
 
 def openSerialPort():
+    global exit
     try:
         ser = serial.Serial(port=settings.serialPortDevice,  # port='/dev/ttyACM0',
                             baudrate=settings.serialPortBaudrate,
@@ -102,10 +101,14 @@ def openSerialPort():
     # Handle other exceptions and print the error
     except Exception as arg:
         print("%s" % str(arg))
-        traceback.print_exc()
+        # traceback.print_exc()
 
         #Report failure to Home Logic system check
         serviceReport.sendFailureToHomeLogic(serviceReport.ACTION_NOTHING, 'Serial port open failure on port %s, wrong port or USB cable missing' % (settings.serialPortDevice))
+
+        # Suppress restart loops
+        time.sleep(900) # 15 min
+        exit = True
 
 
 def closeSerialPort(ser):
@@ -113,11 +116,10 @@ def closeSerialPort(ser):
 
 
 def serialPortThread(serialPortDeviceName, serialPort):
+    global exit
     global checkMsg
     global somethingWrong
     global inverterTemp
-
-    oldTimeout = current_sec_time()
 
     # Wait a while, the OS is probably testing what kind of device is there
     # with sending 'ATEE' commands and others
@@ -155,7 +157,7 @@ def serialPortThread(serialPortDeviceName, serialPort):
                     continue
 
                 # Reset the Rx timeout timer
-                oldTimeout = current_sec_time()
+                serviceReport.systemWatchTimer = current_sec_time()
 
                 # printHexByteString(recvMsg)
                 # Received meter data
@@ -237,17 +239,17 @@ def serialPortThread(serialPortDeviceName, serialPort):
 
                     i = 11
                     val = struct.unpack(">h", recvMsg[i:i + 2])[0]
-                    sensorData['Relay-status'] = val
+                    sensorData['Relay_status'] = val
                     # print("Battery relay status: %d" % val)
 
                     # i = 13
                     # val = struct.unpack(">h", recvMsg[i:i + 2])[0]
-                    # sensorData['PackID-Umin'] = val
+                    # sensorData['PackID_Umin'] = val
                     # # print("Pack ID of min cell voltage: %d" % val)
 
                     # i = 15
                     # val = struct.unpack(">h", recvMsg[i:i + 2])[0]
-                    # sensorData['CellID-Umin'] = val
+                    # sensorData['CellID_Umin'] = val
                     # # print("Cell ID of min cell voltage: %d" % val)
 
                     i = 17
@@ -257,12 +259,12 @@ def serialPortThread(serialPortDeviceName, serialPort):
 
                     # i = 19
                     # val = struct.unpack(">h", recvMsg[i:i + 2])[0]
-                    # sensorData['PackID-Umax'] = val
+                    # sensorData['PackID_Umax'] = val
                     # # print("Pack ID of max cell voltage: %d" % val)
 
                     # i = 21
                     # val = struct.unpack(">h", recvMsg[i:i + 2])[0]
-                    # sensorData['CellID-Umax'] = val
+                    # sensorData['CellID_Umax'] = val
                     # # print("Cell ID of max cell voltage: %d" % val)
 
                     i = 23
@@ -270,12 +272,10 @@ def serialPortThread(serialPortDeviceName, serialPort):
                     sensorData['Umax'] = float(val) / 1000
                     # print("Max cell voltage: %.3f V" % (float(val) / 1000))
 
-
                     i = 29 #0x10D
                     val = struct.unpack(">h", recvMsg[i:i + 2])[0]
                     sensorData['Tmin'] = float(val) / 10
                     # print("Min cell temp: %.1f ℃" % (float(val) / 10))
-
 
                     i = 35 #0x110
                     val = struct.unpack(">h", recvMsg[i:i + 2])[0]
@@ -284,22 +284,22 @@ def serialPortThread(serialPortDeviceName, serialPort):
 
                     i = 37 #0x111
                     val = struct.unpack(">h", recvMsg[i:i + 2])[0]
-                    sensorData['Icharge-max'] = float(val) / 10
+                    sensorData['Icharge_max'] = float(val) / 10
                     # print("Max charge current: %.1f A" % (float(val) / 10))
 
                     i = 39 #0x112
                     val = struct.unpack(">h", recvMsg[i:i + 2])[0]
-                    sensorData['Idischarge-max'] = float(val) / 10
+                    sensorData['Idischarge_max'] = float(val) / 10
                     # print("Max discharge current: %.1f A" % (float(val) / 10))
 
                     i = 41 #0x113
                     val = struct.unpack(">h", recvMsg[i:i + 2])[0]
-                    sensorData['Ucharge-cut-off'] = float(val) / 10
+                    sensorData['Ucharge_cut_off'] = float(val) / 10
                     # print("Charge cut-off voltage: %.1f V" % (float(val) / 10))
 
                     i = 43 #0x114
                     val = struct.unpack(">h", recvMsg[i:i + 2])[0]
-                    sensorData['Udischarge-cut-off'] = float(val) / 10
+                    sensorData['Udischarge_cut_off'] = float(val) / 10
                     # print("Discharge cut-off voltage: %.1f V" % (float(val) / 10))
 
                     # i = 45 #0x115
@@ -353,7 +353,7 @@ def serialPortThread(serialPortDeviceName, serialPort):
 
                     i = 75 #0x124
                     val = struct.unpack(">i", recvMsg[i:i + 4])[0]
-                    sensorData['Echarge-from-grid'] = float(val) / 10
+                    sensorData['Echarge_from_grid'] = float(val) / 10
                     # print("Charge energy from grid: %.1f kWh" % (float(val) / 10))
 
                     mqtt_publish.single("huis/AlphaEss/Battery/power", json.dumps(sensorData, separators=(', ', ':')), hostname=settings.MQTT_ServerIP, retain=True)
@@ -364,17 +364,17 @@ def serialPortThread(serialPortDeviceName, serialPort):
                     sensorData = {}
                     i = 3
                     val = struct.unpack(">h", recvMsg[i:i + 2])[0]
-                    sensorData['Uinv-L1'] = float(val) / 10
+                    sensorData['Uinv_L1'] = float(val) / 10
                     # print("Inverter voltage L1: %.1f V" % (float(val) / 10))
 
                     i = 5
                     val = struct.unpack(">h", recvMsg[i:i + 2])[0]
-                    sensorData['Uinv-L2'] = float(val) / 10
+                    sensorData['Uinv_L2'] = float(val) / 10
                     # print("Inverter voltage L2: %.1f V" % (float(val) / 10))
 
                     i = 7
                     val = struct.unpack(">h", recvMsg[i:i + 2])[0]
-                    sensorData['Uinv-L3'] = float(val) / 10
+                    sensorData['Uinv_L3'] = float(val) / 10
                     # print("Inverter voltage L3: %.1f V" % (float(val) / 10))
 
                     # i = 9
@@ -408,17 +408,17 @@ def serialPortThread(serialPortDeviceName, serialPort):
 
                     i = 31
                     val = struct.unpack(">h", recvMsg[i:i + 2])[0]
-                    sensorData['Uback-L1'] = float(val) / 10
+                    sensorData['Uback_L1'] = float(val) / 10
                     # print("Inverter backup voltage L1: %.1f V" % (float(val) / 10))
 
                     i = 33
                     val = struct.unpack(">h", recvMsg[i:i + 2])[0]
-                    sensorData['Uback-L2'] = float(val) / 10
+                    sensorData['Uback_L2'] = float(val) / 10
                     # print("Inverter backup voltage L2: %.1f V" % (float(val) / 10))
 
                     i = 35
                     val = struct.unpack(">h", recvMsg[i:i + 2])[0]
-                    sensorData['Uback-L3'] = float(val) / 10
+                    sensorData['Uback_L3'] = float(val) / 10
                     # print("Inverter backup voltage L3: %.1f V" % (float(val) / 10))
 
                     # i = 37
@@ -456,17 +456,17 @@ def serialPortThread(serialPortDeviceName, serialPort):
 
                     i = 61
                     val = struct.unpack(">h", recvMsg[i:i + 2])[0]
-                    sensorData['U-PV1'] = float(val) / 10
+                    sensorData['U_PV1'] = float(val) / 10
                     # print("PV1 Voltage: %.1f V" % (float(val) / 10))
 
                     i = 63
                     val = struct.unpack(">h", recvMsg[i:i + 2])[0]
-                    sensorData['I-PV1'] = float(val) / 10
+                    sensorData['I_PV1'] = float(val) / 10
                     # print("PV1 Current: %.1f A" % (float(val) / 10))
 
                     i = 65 # 0x41F
                     val = struct.unpack(">i", recvMsg[i:i + 4])[0]
-                    sensorData['P-PV1'] = val
+                    sensorData['P_PV1'] = val
                     # print("PV1 power: %d W" % val)
 
                     # i = 69
@@ -682,14 +682,6 @@ try:
         sendGetBatteryStatusTimer += 1 #[100ms]
         sendInverterTempTimer += 1 #[100ms]
         time.sleep(0.1) #[100ms]
-
-        # Check the JeeLink Rx timeout
-        if (current_sec_time() - oldTimeout) > 300:
-            # Reset the JeeLink Rx timeout timer
-            oldTimeout = current_sec_time()
-
-            #Report failure to Home Logic system check
-            serviceReport.sendFailureToHomeLogic(serviceReport.ACTION_RESTART, 'Serial port timeout (5 min no data received)!')
 
 finally:
     if serialPort is not None:
