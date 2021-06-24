@@ -25,6 +25,7 @@ current_sec_time = lambda: int(round(time.time()))
 usleep = lambda x: time.sleep(x / 1000000.0)
 
 testMsg     = "\x55\x03\x00\x00\x00\x0D" #, 0x89, 0xDB]
+
 meterMsg    = "\x55\x03\x00\x00\x00\x16"
 batteryMsg  = "\x55\x03\x01\x00\x00\x26"
 inverterMsg = "\x55\x03\x04\x00\x00\x30"
@@ -164,35 +165,35 @@ def serialPortThread(serialPortDeviceName, serialPort):
                 if msgLen == 49:
                     # printHexByteString(recvMsg)
                     sensorData = {}
-                    # 0-2: Header
+                    # addrReg 0-2=Header (+3)
 
-                    i = 3
-                    val = struct.unpack(">i", recvMsg[i:i + 4])[0]
+                    # i = 3 # Address register: 0000h
+                    # val = struct.unpack(">i", recvMsg[addrReg:addrReg + 4])[0]
                     # print("Active power of A phase(Grid Meter): %3dW  " % val) #, end='')
                     # sensorData['Pphase_a'] = val
 
-                    i = 7
-                    val = struct.unpack(">i", recvMsg[i:i + 4])[0]
+                    # i = 7 # Address register: 0002h
+                    # val = struct.unpack(">i", recvMsg[addrReg:addrReg + 4])[0]
                     # print("Active power of B phase(Grid Meter): %3dW  " % val) #, end='')
                     # sensorData['Pphase_b'] = val
 
-                    i = 11
-                    val = struct.unpack(">i", recvMsg[i:i + 4])[0]
+                    # i = 11 # Address register: 0004h
+                    # val = struct.unpack(">i", recvMsg[addrReg:addrReg + 4])[0]
                     # print("Active power of C phase(Grid Meter): %3dW  " % val) #, end='')
                     # sensorData['Pphase_c'] = val
 
-                    i = 15
-                    val = struct.unpack(">i", recvMsg[i:i + 4])[0]
+                    addrReg = 3 + (2 * 0x06) # Address register: 0006h
+                    val = struct.unpack(">i", recvMsg[addrReg:addrReg + 4])[0]
                     # print("Total active power (Grid meter): %3dW  " % val) #, end='')
                     sensorData['Pactive'] = val
 
-                    i = 19
-                    val = struct.unpack(">i", recvMsg[i:i + 4])[0]
+                    addrReg = 3 + (2 * 0x08) # Address register: 0008h
+                    val = struct.unpack(">i", recvMsg[addrReg:addrReg + 4])[0]
                     # print("Feed to grid (Grid meter): %.2fkWh" % (float(val) / 100)) #, end=''), end='')
                     sensorData['Egrid'] = float(val) / 100
 
-                    i = 23
-                    val = struct.unpack(">i", recvMsg[i:i + 4])[0]
+                    addrReg = 3 + (2 * 0x0A) # Address register: 000Ah
+                    val = struct.unpack(">i", recvMsg[addrReg:addrReg + 4])[0]
                     # print("Consume to grid (Grid meter): %.2fkWh" % (float(val) / 100)) #, end=''), end='')
                     sensorData['Econs'] = float(val) / 100
 
@@ -201,12 +202,12 @@ def serialPortThread(serialPortDeviceName, serialPort):
                     # i=35: Not used (Active power of C phase(PV Meter))
 
                     # i = 39
-                    # val = struct.unpack(">i", recvMsg[i:i + 4])[0]
+                    # val = struct.unpack(">i", recvMsg[addrReg:addrReg + 4])[0]
                     # print("Total active power (PV meter): %3dW  " % val) #, end=''), end='')
                     # sensorData['Pactive'] = val
 
                     # i = 43
-                    # val = struct.unpack(">i", recvMsg[i:i + 4])[0]
+                    # val = struct.unpack(">i", recvMsg[addrReg:addrReg + 4])[0]
                     # print("Feed to grid (PV meter): %.2fkWh" % (float(val) / 100)) #, end=''), end='')
                     # sensorData['Pgrid'] = val
 
@@ -216,143 +217,144 @@ def serialPortThread(serialPortDeviceName, serialPort):
                 elif msgLen == 81:
                     # printHexByteString(recvMsg)
                     sensorData = {}
+                    # addrReg 0-2=Header (+3)
 
-                    i = 3
-                    val = struct.unpack(">h", recvMsg[i:i + 2])[0]
+                    addrReg = 3 + (2 * 0x00) # Address register: 0100h
+                    val = struct.unpack(">h", recvMsg[addrReg:addrReg + 2])[0]
                     sensorData['Ubatt'] = float(val) / 10
                     # print("Battery voltage: %.1f V" % (float(val) / 10))
 
-                    i = 5
-                    val = struct.unpack(">h", recvMsg[i:i + 2])[0]
+                    addrReg = 3 + (2 * 0x01) # Address register: 0101h
+                    val = struct.unpack(">h", recvMsg[addrReg:addrReg + 2])[0]
                     sensorData['Ibatt'] = float(val) / 10
                     # print("Battery current: %.1f A" % (float(val) / 10))
 
-                    i = 7
-                    val = struct.unpack(">h", recvMsg[i:i + 2])[0]
-                    sensorData['SOC'] = float(val) / 10
-                    # print("Battery SOC: %.1f %%" % (float(val) / 10))
+                    addrReg = 3 + (2 * 0x02) # Address register: 0102h
+                    val = struct.unpack(">h", recvMsg[addrReg:addrReg + 2])[0]
+                    sensorData['SOC'] = int(val)
+                    # print("Battery SOC: %.1f %%" % float(val))
 
-                    i = 9
-                    val = struct.unpack(">h", recvMsg[i:i + 2])[0]
+                    addrReg = 3 + (2 * 0x03) # Address register: 0103h
+                    val = struct.unpack(">h", recvMsg[addrReg:addrReg + 2])[0]
                     sensorData['Status'] = val
                     # print("Battery status: %d" % val)
 
-                    i = 11
-                    val = struct.unpack(">h", recvMsg[i:i + 2])[0]
+                    addrReg = 3 + (2 * 0x04) # Address register: 0104h
+                    val = struct.unpack(">h", recvMsg[addrReg:addrReg + 2])[0]
                     sensorData['Relay_status'] = val
                     # print("Battery relay status: %d" % val)
 
-                    # i = 13
-                    # val = struct.unpack(">h", recvMsg[i:i + 2])[0]
+                    # addrReg = 3 + (2 * 0x05) # Address register: 0105h
+                    # val = struct.unpack(">h", recvMsg[addrReg:addrReg + 2])[0]
                     # sensorData['PackID_Umin'] = val
                     # # print("Pack ID of min cell voltage: %d" % val)
 
-                    # i = 15
-                    # val = struct.unpack(">h", recvMsg[i:i + 2])[0]
+                    # addrReg = 3 + (2 * 0x06) # Address register: 0106h
+                    # val = struct.unpack(">h", recvMsg[addrReg:addrReg + 2])[0]
                     # sensorData['CellID_Umin'] = val
                     # # print("Cell ID of min cell voltage: %d" % val)
 
-                    i = 17
-                    val = struct.unpack(">h", recvMsg[i:i + 2])[0]
+                    addrReg = 3 + (2 * 0x07) # Address register: 0107h
+                    val = struct.unpack(">h", recvMsg[addrReg:addrReg + 2])[0]
                     sensorData['Umin'] = float(val) / 1000
                     # print("Min cell voltage: %.3f V" % (float(val) / 1000))
 
-                    # i = 19
-                    # val = struct.unpack(">h", recvMsg[i:i + 2])[0]
+                    # addrReg = 3 + (2 * 0x08) # Address register: 0108h
+                    # val = struct.unpack(">h", recvMsg[addrReg:addrReg + 2])[0]
                     # sensorData['PackID_Umax'] = val
                     # # print("Pack ID of max cell voltage: %d" % val)
 
-                    # i = 21
-                    # val = struct.unpack(">h", recvMsg[i:i + 2])[0]
+                    # addrReg = 3 + (2 * 0x09) # Address register: 0109h
+                    # val = struct.unpack(">h", recvMsg[addrReg:addrReg + 2])[0]
                     # sensorData['CellID_Umax'] = val
                     # # print("Cell ID of max cell voltage: %d" % val)
 
-                    i = 23
-                    val = struct.unpack(">h", recvMsg[i:i + 2])[0]
+                    addrReg = 3 + (2 * 0x0A) # Address register: 010Ah
+                    val = struct.unpack(">h", recvMsg[addrReg:addrReg + 2])[0]
                     sensorData['Umax'] = float(val) / 1000
                     # print("Max cell voltage: %.3f V" % (float(val) / 1000))
 
-                    i = 29 #0x10D
-                    val = struct.unpack(">h", recvMsg[i:i + 2])[0]
+                    addrReg = 3 + (2 * 0x0D) # Address register: 010Dh
+                    val = struct.unpack(">h", recvMsg[addrReg:addrReg + 2])[0]
                     sensorData['Tmin'] = float(val) / 10
                     # print("Min cell temp: %.1f ℃" % (float(val) / 10))
 
-                    i = 35 #0x110
-                    val = struct.unpack(">h", recvMsg[i:i + 2])[0]
+                    addrReg = 3 + (2 * 0x10) # Address register: 0110h
+                    val = struct.unpack(">h", recvMsg[addrReg:addrReg + 2])[0]
                     sensorData['Tmax'] = float(val) / 10
                     # print("Max cell temp: %.1f ℃" % (float(val) / 10))
 
-                    i = 37 #0x111
-                    val = struct.unpack(">h", recvMsg[i:i + 2])[0]
+                    addrReg = 3 + (2 * 0x11) # Address register: 0111h
+                    val = struct.unpack(">h", recvMsg[addrReg:addrReg + 2])[0]
                     sensorData['Icharge_max'] = float(val) / 10
                     # print("Max charge current: %.1f A" % (float(val) / 10))
 
-                    i = 39 #0x112
-                    val = struct.unpack(">h", recvMsg[i:i + 2])[0]
+                    addrReg = 3 + (2 * 0x12) # Address register: 0112h
+                    val = struct.unpack(">h", recvMsg[addrReg:addrReg + 2])[0]
                     sensorData['Idischarge_max'] = float(val) / 10
                     # print("Max discharge current: %.1f A" % (float(val) / 10))
 
-                    i = 41 #0x113
-                    val = struct.unpack(">h", recvMsg[i:i + 2])[0]
+                    addrReg = 3 + (2 * 0x13) # Address register: 0113h
+                    val = struct.unpack(">h", recvMsg[addrReg:addrReg + 2])[0]
                     sensorData['Ucharge_cut_off'] = float(val) / 10
                     # print("Charge cut-off voltage: %.1f V" % (float(val) / 10))
 
-                    i = 43 #0x114
-                    val = struct.unpack(">h", recvMsg[i:i + 2])[0]
+                    addrReg = 3 + (2 * 0x14) # Address register: 0114h
+                    val = struct.unpack(">h", recvMsg[addrReg:addrReg + 2])[0]
                     sensorData['Udischarge_cut_off'] = float(val) / 10
                     # print("Discharge cut-off voltage: %.1f V" % (float(val) / 10))
 
                     # i = 45 #0x115
-                    # val = struct.unpack(">h", recvMsg[i:i + 2])[0]
+                    # val = struct.unpack(">h", recvMsg[addrReg:addrReg + 2])[0]
                     # print("BMU software version: %d" % val)
 
                     # i = 47 #0x116
-                    # val = struct.unpack(">h", recvMsg[i:i + 2])[0]
+                    # val = struct.unpack(">h", recvMsg[addrReg:addrReg + 2])[0]
                     # print("LMU software version: %d" % val)
 
                     # i = 49 #0x117
-                    # val = struct.unpack(">h", recvMsg[i:i + 2])[0]
+                    # val = struct.unpack(">h", recvMsg[addrReg:addrReg + 2])[0]
                     # print("ISO software version: %d" % val)
 
                     # i = 51 #0x118
-                    # val = struct.unpack(">h", recvMsg[i:i + 2])[0]
+                    # val = struct.unpack(">h", recvMsg[addrReg:addrReg + 2])[0]
                     # print("Battery num: %d" % val)
 
                     # i = 53 #0x119
-                    # val = struct.unpack(">h", recvMsg[i:i + 2])[0]
+                    # val = struct.unpack(">h", recvMsg[addrReg:addrReg + 2])[0]
                     # print("Battery capacity: %.1f kWh" % (float(val) / 10))
 
                     # i = 55 #0x11A
-                    # val = struct.unpack(">h", recvMsg[i:i + 2])[0]
+                    # val = struct.unpack(">h", recvMsg[addrReg:addrReg + 2])[0]
                     # print("Battery type: %d" % val)
 
-                    i = 57 #0x11B
-                    val = struct.unpack(">h", recvMsg[i:i + 2])[0]
+                    addrReg = 3 + (2 * 0x1B) # Address register: 011Bh
+                    val = struct.unpack(">h", recvMsg[addrReg:addrReg + 2])[0]
                     sensorData['SOH'] = float(val) / 10
                     # print("Battery SOH: %.1f %%" % (float(val) / 10))
 
-                    i = 59 #0x11C
-                    val = struct.unpack(">i", recvMsg[i:i + 4])[0]
+                    addrReg = 3 + (2 * 0x1C) # Address register: 011Ch
+                    val = struct.unpack(">i", recvMsg[addrReg:addrReg + 4])[0]
                     sensorData['Warning'] = val
                     # print("Battery warning: %d" % val)
 
-                    i = 63 #0x11E
-                    val = struct.unpack(">i", recvMsg[i:i + 4])[0]
+                    addrReg = 3 + (2 * 0x1E) # Address register: 011Eh
+                    val = struct.unpack(">i", recvMsg[addrReg:addrReg + 4])[0]
                     sensorData['Fault'] = val
                     # print("Battery fault: %d" % val)
 
-                    i = 67 #0x120
-                    val = struct.unpack(">i", recvMsg[i:i + 4])[0]
+                    addrReg = 3 + (2 * 0x20) # Address register: 0120h
+                    val = struct.unpack(">i", recvMsg[addrReg:addrReg + 4])[0]
                     sensorData['Echarge'] = float(val) / 10
                     # print("Charge energy: %.1f kWh" % (float(val) / 10))
 
-                    i = 71 #0x122
-                    val = struct.unpack(">i", recvMsg[i:i + 4])[0]
+                    addrReg = 3 + (2 * 0x22) # Address register: 0122h
+                    val = struct.unpack(">i", recvMsg[addrReg:addrReg + 4])[0]
                     sensorData['Edischarge'] = float(val) / 10
                     # print("Discharge energy: %.1f kWh" % (float(val) / 10))
 
-                    i = 75 #0x124
-                    val = struct.unpack(">i", recvMsg[i:i + 4])[0]
+                    addrReg = 3 + (2 * 0x24) # Address register: 0124h
+                    val = struct.unpack(">i", recvMsg[addrReg:addrReg + 4])[0]
                     sensorData['Echarge_from_grid'] = float(val) / 10
                     # print("Charge energy from grid: %.1f kWh" % (float(val) / 10))
 
@@ -362,154 +364,156 @@ def serialPortThread(serialPortDeviceName, serialPort):
                 elif msgLen == 101:
                     # printHexByteString(recvMsg)
                     sensorData = {}
-                    i = 3
-                    val = struct.unpack(">h", recvMsg[i:i + 2])[0]
+                    # addrReg 0-2=Header (+3)
+
+                    addrReg = 3 + (2 * 0x00) # Address register: 0400h
+                    val = struct.unpack(">h", recvMsg[addrReg:addrReg + 2])[0]
                     sensorData['Uinv_L1'] = float(val) / 10
                     # print("Inverter voltage L1: %.1f V" % (float(val) / 10))
 
-                    i = 5
-                    val = struct.unpack(">h", recvMsg[i:i + 2])[0]
+                    addrReg = 3 + (2 * 0x01) # Address register: 0401h
+                    val = struct.unpack(">h", recvMsg[addrReg:addrReg + 2])[0]
                     sensorData['Uinv_L2'] = float(val) / 10
                     # print("Inverter voltage L2: %.1f V" % (float(val) / 10))
 
-                    i = 7
-                    val = struct.unpack(">h", recvMsg[i:i + 2])[0]
+                    addrReg = 3 + (2 * 0x02) # Address register: 0402h
+                    val = struct.unpack(">h", recvMsg[addrReg:addrReg + 2])[0]
                     sensorData['Uinv_L3'] = float(val) / 10
                     # print("Inverter voltage L3: %.1f V" % (float(val) / 10))
 
                     # i = 9
-                    # val = struct.unpack(">h", recvMsg[i:i + 2])[0]
+                    # val = struct.unpack(">h", recvMsg[addrReg:addrReg + 2])[0]
                     # print("Inverter current L1: %.1f A" % (float(val) / 10))
 
                     # i = 11
-                    # val = struct.unpack(">h", recvMsg[i:i + 2])[0]
+                    # val = struct.unpack(">h", recvMsg[addrReg:addrReg + 2])[0]
                     # print("Inverter current L2: %.1f A" % (float(val) / 10))
 
                     # i = 13
-                    # val = struct.unpack(">h", recvMsg[i:i + 2])[0]
+                    # val = struct.unpack(">h", recvMsg[addrReg:addrReg + 2])[0]
                     # print("Inverter current L3: %.1f A" % (float(val) / 10))
 
                     # i = 15
-                    # val = struct.unpack(">i", recvMsg[i:i + 4])[0]
+                    # val = struct.unpack(">i", recvMsg[addrReg:addrReg + 4])[0]
                     # print("Inverter power L1: %d W" % val)
 
                     # i = 19
-                    # val = struct.unpack(">i", recvMsg[i:i + 4])[0]
+                    # val = struct.unpack(">i", recvMsg[addrReg:addrReg + 4])[0]
                     # print("Inverter power L2: %d W" % val)
 
                     # i = 23
-                    # val = struct.unpack(">i", recvMsg[i:i + 4])[0]
+                    # val = struct.unpack(">i", recvMsg[addrReg:addrReg + 4])[0]
                     # print("Inverter power L3: %d W" % val)
 
-                    i = 27 #0x40C
-                    val = struct.unpack(">i", recvMsg[i:i + 4])[0]
+                    addrReg = 3 + (2 * 0x0C) # Address register: 040Ch
+                    val = struct.unpack(">i", recvMsg[addrReg:addrReg + 4])[0]
                     sensorData['Pinv'] = val
                     # print("Inverter power total: %d W" % val)
 
-                    i = 31
-                    val = struct.unpack(">h", recvMsg[i:i + 2])[0]
+                    addrReg = 3 + (2 * 0x0E) # Address register: 040Eh
+                    val = struct.unpack(">h", recvMsg[addrReg:addrReg + 2])[0]
                     sensorData['Uback_L1'] = float(val) / 10
                     # print("Inverter backup voltage L1: %.1f V" % (float(val) / 10))
 
-                    i = 33
-                    val = struct.unpack(">h", recvMsg[i:i + 2])[0]
+                    addrReg = 3 + (2 * 0x0F) # Address register: 040Fh
+                    val = struct.unpack(">h", recvMsg[addrReg:addrReg + 2])[0]
                     sensorData['Uback_L2'] = float(val) / 10
                     # print("Inverter backup voltage L2: %.1f V" % (float(val) / 10))
 
-                    i = 35
-                    val = struct.unpack(">h", recvMsg[i:i + 2])[0]
+                    addrReg = 3 + (2 * 0x10) # Address register: 0410h
+                    val = struct.unpack(">h", recvMsg[addrReg:addrReg + 2])[0]
                     sensorData['Uback_L3'] = float(val) / 10
                     # print("Inverter backup voltage L3: %.1f V" % (float(val) / 10))
 
                     # i = 37
-                    # val = struct.unpack(">h", recvMsg[i:i + 2])[0]
+                    # val = struct.unpack(">h", recvMsg[addrReg:addrReg + 2])[0]
                     # print("Inverter backup current L1: %.1f A" % (float(val) / 10))
 
                     # i = 39
-                    # val = struct.unpack(">h", recvMsg[i:i + 2])[0]
+                    # val = struct.unpack(">h", recvMsg[addrReg:addrReg + 2])[0]
                     # print("Inverter backup current L2: %.1f A" % (float(val) / 10))
 
                     # i = 41
-                    # val = struct.unpack(">h", recvMsg[i:i + 2])[0]
+                    # val = struct.unpack(">h", recvMsg[addrReg:addrReg + 2])[0]
                     # print("Inverter backup current L3: %.1f A" % (float(val) / 10))
 
                     # i = 43
-                    # val = struct.unpack(">i", recvMsg[i:i + 4])[0]
+                    # val = struct.unpack(">i", recvMsg[addrReg:addrReg + 4])[0]
                     # print("Inverter backup power L1: %d W" % val)
 
                     # i = 47
-                    # val = struct.unpack(">i", recvMsg[i:i + 4])[0]
+                    # val = struct.unpack(">i", recvMsg[addrReg:addrReg + 4])[0]
                     # print("Inverter backup power L2: %d W" % val)
 
                     # i = 51
-                    # val = struct.unpack(">i", recvMsg[i:i + 4])[0]
+                    # val = struct.unpack(">i", recvMsg[addrReg:addrReg + 4])[0]
                     # print("Inverter backup power L3: %d W" % val)
 
-                    i = 55
-                    val = struct.unpack(">i", recvMsg[i:i + 4])[0]
+                    addrReg = 3 + (2 * 0x1A) # Address register: 041Ah
+                    val = struct.unpack(">i", recvMsg[addrReg:addrReg + 4])[0]
                     sensorData['Pback'] = val
                     # print("Inverter backup power total: %d W" % val)
 
                     # i = 59
-                    # val = struct.unpack(">h", recvMsg[i:i + 2])[0]
+                    # val = struct.unpack(">h", recvMsg[addrReg:addrReg + 2])[0]
                     # print("Inverter grid frequency: %.2f Hz" % (float(val) / 100))
 
-                    i = 61
-                    val = struct.unpack(">h", recvMsg[i:i + 2])[0]
+                    addrReg = 3 + (2 * 0x1D) # Address register: 041Dh
+                    val = struct.unpack(">h", recvMsg[addrReg:addrReg + 2])[0]
                     sensorData['U_PV1'] = float(val) / 10
                     # print("PV1 Voltage: %.1f V" % (float(val) / 10))
 
-                    i = 63
-                    val = struct.unpack(">h", recvMsg[i:i + 2])[0]
+                    addrReg = 3 + (2 * 0x1E) # Address register: 041Eh
+                    val = struct.unpack(">h", recvMsg[addrReg:addrReg + 2])[0]
                     sensorData['I_PV1'] = float(val) / 10
                     # print("PV1 Current: %.1f A" % (float(val) / 10))
 
-                    i = 65 # 0x41F
-                    val = struct.unpack(">i", recvMsg[i:i + 4])[0]
+                    addrReg = 3 + (2 * 0x1F) # Address register: 041Fh
+                    val = struct.unpack(">i", recvMsg[addrReg:addrReg + 4])[0]
                     sensorData['P_PV1'] = val
                     # print("PV1 power: %d W" % val)
 
                     # i = 69
-                    # val = struct.unpack(">h", recvMsg[i:i + 2])[0]
+                    # val = struct.unpack(">h", recvMsg[addrReg:addrReg + 2])[0]
                     # print("PV2 Voltage: %.1f V" % (float(val) / 10))
 
                     # i = 71
-                    # val = struct.unpack(">h", recvMsg[i:i + 2])[0]
+                    # val = struct.unpack(">h", recvMsg[addrReg:addrReg + 2])[0]
                     # print("PV2 Current: %.1f A" % (float(val) / 10))
 
                     # i = 73
-                    # val = struct.unpack(">i", recvMsg[i:i + 4])[0]
+                    # val = struct.unpack(">i", recvMsg[addrReg:addrReg + 4])[0]
                     # print("PV2 power: %d W" % val)
 
                     # i = 77
-                    # val = struct.unpack(">h", recvMsg[i:i + 2])[0]
+                    # val = struct.unpack(">h", recvMsg[addrReg:addrReg + 2])[0]
                     # print("PV3 Voltage: %.1f V" % (float(val) / 10))
 
                     # i = 79
-                    # val = struct.unpack(">h", recvMsg[i:i + 2])[0]
+                    # val = struct.unpack(">h", recvMsg[addrReg:addrReg + 2])[0]
                     # print("PV3 Current: %.1f A" % (float(val) / 10))
 
                     # i = 81
-                    # val = struct.unpack(">i", recvMsg[i:i + 4])[0]
+                    # val = struct.unpack(">i", recvMsg[addrReg:addrReg + 4])[0]
                     # print("PV3 power: %d W" % val)
 
-                    i = 85
-                    val = struct.unpack(">h", recvMsg[i:i + 2])[0]
+                    addrReg = 3 + (2 * 0x29) # Address register: 0429h
+                    val = struct.unpack(">h", recvMsg[addrReg:addrReg + 2])[0]
                     inverterTemp = float(val) / 10
                     sensorData['TempInv'] = inverterTemp
 
-                    i = 89
-                    val = struct.unpack(">i", recvMsg[i:i + 4])[0]
+                    addrReg = 3 + (2 * 0x2A) # Address register: 042Ah
+                    val = struct.unpack(">i", recvMsg[addrReg:addrReg + 4])[0]
                     sensorData['Warning'] = val
                     # print("Inverter warning: %d" % val)
 
-                    i = 93
-                    val = struct.unpack(">i", recvMsg[i:i + 4])[0]
+                    addrReg = 3 + (2 * 0x2C) # Address register: 042Ch
+                    val = struct.unpack(">i", recvMsg[addrReg:addrReg + 4])[0]
                     sensorData['Fault'] = val
                     # print("Inverter fault: %d" % val)
 
                     # i = 97
-                    # val = struct.unpack(">i", recvMsg[i:i + 4])[0]
+                    # val = struct.unpack(">i", recvMsg[addrReg:addrReg + 4])[0]
                     # sensorData['Epv'] = float(val) / 10
                     # print("Total PV Energy: %.1f kWh" % (float(val) / 10))
 
@@ -520,28 +524,28 @@ def serialPortThread(serialPortDeviceName, serialPort):
                 #     # printHexByteString(recvMsg)
                 #     sensorData = {}
                 #     i = 3
-                #     val = struct.unpack(">h", recvMsg[i:i + 2])[0]
+                #     val = struct.unpack(">h", recvMsg[addrReg:addrReg + 2])[0]
                 #     print("Feed into grid: %d %%" % val)
 
                 #     i = 5
-                #     val = struct.unpack(">h", recvMsg[i:i + 2])[0]
+                #     val = struct.unpack(">h", recvMsg[addrReg:addrReg + 2])[0]
                 #     print("System fault: %d" % val)
 
                 #     i = 7
-                #     val = struct.unpack(">h", recvMsg[i:i + 2])[0]
+                #     val = struct.unpack(">h", recvMsg[addrReg:addrReg + 2])[0]
                 #     print("Year-month: %04x" % val)
 
                 #     i = 9
-                #     val = struct.unpack(">h", recvMsg[i:i + 2])[0]
+                #     val = struct.unpack(">h", recvMsg[addrReg:addrReg + 2])[0]
                 #     print("Day-hour: %04x" % val)
 
                 #     i = 11
-                #     val = struct.unpack(">h", recvMsg[i:i + 2])[0]
+                #     val = struct.unpack(">h", recvMsg[addrReg:addrReg + 2])[0]
                 #     print("Minute-second: %04x" % val)
 
                 else:
                     print("Unknown data msg received")
-                    printHexByteString(recvMsg)
+                    # printHexByteString(recvMsg)
 
             # Check if there is any message to send
             if not sendQueue.empty():
@@ -649,14 +653,16 @@ try:
     sendInverterTempTimer = settings.SEND_INVERTER_TEMP_MSG_TIMER - 100
 
     while not exit:
-        # Get inverter status every 5 sec
+        # Get battery and  inverter status every 2.5 sec
         if sendGetInverterStatusTimer >= settings.SEND_INVERTER_MSG_TIMER:
             sendGetInverterStatusTimer = 0
 
+            # Get battery data
+            sendModbusMsg(batteryMsg, 0x55)
             # Get inverter data
             sendModbusMsg(inverterMsg, 0x55)
 
-        # Get meter status every 30 sec
+        # Get meter status every 15 min
         if sendGetMeterStatusTimer >= settings.SEND_METER_MSG_TIMER:
             sendGetMeterStatusTimer = 0
 
@@ -664,11 +670,11 @@ try:
             sendModbusMsg(meterMsg, 0x55)
 
         # Get battery status every 30 sec
-        if sendGetBatteryStatusTimer >= settings.SEND_BATTERY_MSG_TIMER:
-            sendGetBatteryStatusTimer = 0
+        # if sendGetBatteryStatusTimer >= settings.SEND_BATTERY_MSG_TIMER:
+        #     sendGetBatteryStatusTimer = 0
 
-            # Get battery data
-            sendModbusMsg(batteryMsg, 0x55)
+        #     # Get battery data
+        #     sendModbusMsg(batteryMsg, 0x55)
 
         if (inverterTemp is not None) and (sendInverterTempTimer >= settings.SEND_INVERTER_TEMP_MSG_TIMER):
             sendInverterTempTimer = 0
