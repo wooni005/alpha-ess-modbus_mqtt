@@ -3,7 +3,7 @@ import logging
 MQTT_ServerIP      = "192.168.5.248"
 MQTT_ServerPort    = 1883
 
-serialPortDevice   = '/dev/ttyUSB0'
+serialPortDevice   = '/dev/ttyUSB1'
 serialPortBaudrate = 9600
 
 LOG_FILENAME       = "/home/pi/log/alpha-ess-modbus_mqtt.log"
@@ -16,5 +16,5 @@ MQTT_TOPIC_REPORT  = "huis/AlphaEss/RPiInfra/report"
 
 SEND_INVERTER_MSG_TIMER      = 25   #2.5sec  [100ms]
 SEND_METER_MSG_TIMER         = 9000 #15min   [100ms]
-SEND_BATTERY_MSG_TIMER       = 25   #30sec   [100ms]
+SEND_BATTERY_MSG_TIMER       = 3000 #5min    [100ms]
 SEND_INVERTER_TEMP_MSG_TIMER = 3000 #5min    [100ms]

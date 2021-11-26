@@ -231,8 +231,8 @@ def serialPortThread(serialPortDeviceName, serialPort):
 
                     addrReg = 3 + (2 * 0x02) # Address register: 0102h
                     val = struct.unpack(">h", recvMsg[addrReg:addrReg + 2])[0]
-                    sensorData['SOC'] = int(val)
-                    # print("Battery SOC: %.1f %%" % float(val))
+                    sensorData['SOC'] = float(val) / 10
+                    # print("Battery SOC: %.1f %%" % (float(val) / 10))
 
                     addrReg = 3 + (2 * 0x03) # Address register: 0103h
                     val = struct.unpack(">h", recvMsg[addrReg:addrReg + 2])[0]
@@ -658,23 +658,23 @@ try:
             sendGetInverterStatusTimer = 0
 
             # Get battery data
-            sendModbusMsg(batteryMsg, 0x55)
+            # sendModbusMsg(batteryMsg, 0x55)
             # Get inverter data
             sendModbusMsg(inverterMsg, 0x55)
 
-        # Get meter status every 15 min
-        if sendGetMeterStatusTimer >= settings.SEND_METER_MSG_TIMER:
-            sendGetMeterStatusTimer = 0
+        # # Get meter status every 15 min
+        # if sendGetMeterStatusTimer >= settings.SEND_METER_MSG_TIMER:
+        #     sendGetMeterStatusTimer = 0
 
-            # Get Meter data
-            sendModbusMsg(meterMsg, 0x55)
+        #     # Get Meter data
+        #     sendModbusMsg(meterMsg, 0x55)
 
         # Get battery status every 30 sec
-        # if sendGetBatteryStatusTimer >= settings.SEND_BATTERY_MSG_TIMER:
-        #     sendGetBatteryStatusTimer = 0
+        if sendGetBatteryStatusTimer >= settings.SEND_BATTERY_MSG_TIMER:
+            sendGetBatteryStatusTimer = 0
 
-        #     # Get battery data
-        #     sendModbusMsg(batteryMsg, 0x55)
+            # Get battery data
+            sendModbusMsg(batteryMsg, 0x55)
 
         if (inverterTemp is not None) and (sendInverterTempTimer >= settings.SEND_INVERTER_TEMP_MSG_TIMER):
             sendInverterTempTimer = 0
