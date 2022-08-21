@@ -148,6 +148,7 @@ def serialPortThread(serialPortDeviceName, serialPort):
 
                 # Check the receive msg CRC
                 if not modbus.checkRecvMsgCRC(recvMsg):
+                    print("checkRecvMsgCRC not OK", end='')
                     printHexByteString(recvMsg)
                     continue
 

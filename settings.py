@@ -3,7 +3,7 @@ import logging
 MQTT_ServerIP      = "192.168.5.248"
 MQTT_ServerPort    = 1883
 
-serialPortDevice   = '/dev/ttyUSB1'
+serialPortDevice   = '/dev/ttyUSB0'
 serialPortBaudrate = 9600
 
 LOG_FILENAME       = "/home/pi/log/alpha-ess-modbus_mqtt.log"
