@@ -4,13 +4,9 @@ import os
 import sys
 import signal
 import serial
-import select
-import tty
 import termios
 import time
 import traceback
-import fcntl
-import errno
 import struct
 import _thread
 from queue import Queue
@@ -19,23 +15,34 @@ from queue import Queue
 import modbus
 import settings
 
-current_sec_time = lambda: int(round(time.time()))
-current_milli_time = lambda: int(round(time.time() * 1000))
-usleep = lambda x: time.sleep(x / 1000000.0)
-msleep = lambda x: time.sleep(x / 1000.0)
-
 sendQueueBoard = Queue(maxsize=0)
 
-exit = False
+exitProgram = False
 serialPort = None
 oldSettings = None
 
 
+def current_sec_time():
+    return int(round(time.time()))
+
+
+def current_milli_time():
+    return int(round(time.time() * 1000))
+
+
+def usleep(uSeconds):
+    return time.sleep(uSeconds / 1000000.0)
+
+
+def msleep(uSeconds):
+    return time.sleep(uSeconds / 1000.0)
+
+
 def signal_handler(_signal, frame):
-    global exit
+    global exitProgram
 
     print('You pressed Ctrl+C!')
-    exit = True
+    exitProgram = True
 
 
 def initAnykey():
@@ -43,8 +50,8 @@ def initAnykey():
 
     oldSettings = termios.tcgetattr(sys.stdin)
     newSettings = termios.tcgetattr(sys.stdin)
-    # newSettings[3] = newSettings[3] & ~(termios.ECHO | termios.ICANON) # lflags
-    newSettings[3] = newSettings[3] & ~(termios.ECHO | termios.ICANON) # lflags
+    # newSettings[3] = newSettings[3] & ~(termios.ECHO | termios.ICANON)  # lflags
+    newSettings[3] = newSettings[3] & ~(termios.ECHO | termios.ICANON)  # lflags
     newSettings[6][termios.VMIN] = 0  # cc
     newSettings[6][termios.VTIME] = 0 # cc
     termios.tcsetattr(sys.stdin, termios.TCSADRAIN, newSettings)
@@ -139,7 +146,7 @@ def serialPortThread(serialPortDeviceName, serialPort):
 
     # Ask for board Id
     print("serialPortThread started")
-    serialPort.setRTS(0) # Disable RS485 send
+    serialPort.setRTS(0)  # Disable RS485 send
 
     while True:
         try:
@@ -611,7 +618,7 @@ else:
     initAnykey()
 
 try:
-    while not exit:
+    while not exitProgram:
         if sendDelayTimer >= 5:
             sendDelayTimer = 0
             modBusAddr = modBusAddr + 1
@@ -627,7 +634,7 @@ try:
             # Key is pressed
             if ch == b'\x1b':
                 print("Escape pressed: Exit")
-                exit = True
+                exitProgram = True
             elif ch == b'r':
                 print("Reset powerAvg")
                 powerCntAdd = 0

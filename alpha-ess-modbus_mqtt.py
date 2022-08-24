@@ -21,26 +21,30 @@ import logger
 import serviceReport
 
 sendQueue = Queue(maxsize=0)
-current_sec_time = lambda: int(round(time.time()))
-usleep = lambda x: time.sleep(x / 1000000.0)
+testMsg = "\x55\x03\x00\x00\x00\x0D"  # 0x89, 0xDB]
 
-testMsg     = "\x55\x03\x00\x00\x00\x0D" #, 0x89, 0xDB]
-
-meterMsg    = "\x55\x03\x00\x00\x00\x16"
-batteryMsg  = "\x55\x03\x01\x00\x00\x26"
+meterMsg = "\x55\x03\x00\x00\x00\x16"
+batteryMsg = "\x55\x03\x01\x00\x00\x26"
 inverterMsg = "\x55\x03\x04\x00\x00\x30"
-systemMsg   = "\x55\x03\x07\x00\x00\x06"
+systemMsg = "\x55\x03\x07\x00\x00\x06"
 
-exit = False
-serialPort = None
+exitThread = False
 inverterTemp = None
 
 
+def current_sec_time():
+    return int(round(time.time()))
+
+
+def usleep(uSeconds):
+    return time.sleep(uSeconds / 1000000.0)
+
+
 def signal_handler(_signal, frame):
-    global exit
+    global exitThread
 
     print('You pressed Ctrl+C!')
-    exit = True
+    exitThread = True
 
 
 def printHexString(str):
@@ -65,27 +69,27 @@ def on_connect(client, userdata, flags, rc):
         print(("ERROR: MQTT Client connected with result code %s " % str(rc)))
 
 
-# The callback for when a PUBLISH message is received from the server
-def on_message(client, userdata, msg):
+# The callback for when a published message is received from the server
+def on_message(_client, userdata, msg):
     print(('ERROR: Received ' + msg.topic + ' in on_message function' + str(msg.payload)))
 
 
-def on_message_homelogic(client, userdata, msg):
-    #print(msg.topic + " " + str(msg.payload))
+def on_message_homelogic(_client, userdata, msg):
+    # print(msg.topic + " " + str(msg.payload))
     topics = msg.topic.split("/")
 
-    deviceName = topics[2] #huis/RFXtrx/KaKu-12/out
-    cmnd = deviceName.split("-") #KaKu-12
+    deviceName = topics[2]  # huis/RFXtrx/KaKu-12/out
+    cmnd = deviceName.split("-")  # KaKu-12
 
     # KaKu-12
     if cmnd[0] == "KaKu":
-        #print("Activate KaKu WCD: %s" % cmnd[1])
+        # print("Activate KaKu WCD: %s" % cmnd[1])
         # setKaKu(int(cmnd[1]), msg.payload)
         pass
 
 
 def openSerialPort():
-    global exit
+    global exitThread
     try:
         ser = serial.Serial(port=settings.serialPortDevice,  # port='/dev/ttyACM0',
                             baudrate=settings.serialPortBaudrate,
@@ -95,7 +99,7 @@ def openSerialPort():
                             timeout=1)  # 1=1sec 0=non-blocking None=Blocked
 
         if ser.isOpen():
-            print(("rflink_mqtt: Successfully connected to serial port %s" % (settings.serialPortDevice)))
+            print(("rflink_mqtt: Successfully connected to serial port %s" % settings.serialPortDevice))
 
         return ser
 
@@ -104,37 +108,35 @@ def openSerialPort():
         print("%s" % str(arg))
         # traceback.print_exc()
 
-        #Report failure to Home Logic system check
-        serviceReport.sendFailureToHomeLogic(serviceReport.ACTION_NOTHING, 'Serial port open failure on port %s, wrong port or USB cable missing' % (settings.serialPortDevice))
+        # Report failure to Home Logic system check
+        serviceReport.sendFailureToHomeLogic(serviceReport.ACTION_NOTHING, 'Serial port open failure on port %s, wrong port or USB cable missing' % settings.serialPortDevice)
 
         # Suppress restart loops
-        time.sleep(900) # 15 min
-        exit = True
+        time.sleep(900)  # 15 min
+        exitThread = True
 
 
 def closeSerialPort(ser):
     ser.close()
 
 
-def serialPortThread(serialPortDeviceName, serialPort):
-    global exit
-    global checkMsg
-    global somethingWrong
+def serialPortThread(serialPortDeviceName, _serialPort):
+    global exitThread
     global inverterTemp
 
     # Wait a while, the OS is probably testing what kind of device is there
     # with sending 'ATEE' commands and others
     time.sleep(2)
-    serialPort.reset_input_buffer()
+    _serialPort.reset_input_buffer()
 
-    # Ask for board Id
+    # Ask for board ID
     print("serialPortThread started")
-    serialPort.setRTS(0) # Disable RS485 send
+    _serialPort.setRTS(0)  # Disable RS485 send
 
-    while not exit:
+    while not exitThread:
         try:
-            if serialPort.isOpen():
-                recvMsg = serialPort.read(110)
+            if _serialPort.isOpen():
+                recvMsg = _serialPort.read(110)
                 # "".join([chr(i) for i in recvMsgWithoutCRC])
             else:
                 recvMsg = ""
@@ -146,14 +148,14 @@ def serialPortThread(serialPortDeviceName, serialPort):
                 msgLen = len(recvMsg)
                 # print("Received msgLen: %d msg: " % msgLen) #, end='')
 
-                # Check the receive msg CRC
+                # Check the received msg CRC
                 if not modbus.checkRecvMsgCRC(recvMsg):
                     print("checkRecvMsgCRC not OK", end='')
                     printHexByteString(recvMsg)
                     continue
 
                 # Check msgLen (+5 bytes=modBusAddr,Cmnd,dataLength,CRChigh,CRClow)
-                if msgLen != (recvMsg[2] + 5):
+                if msgLen != (int(recvMsg[2]) + 5):
                     print("Wrong msgLen!", end='')
                     printHexByteString(recvMsg)
                     continue
@@ -183,17 +185,17 @@ def serialPortThread(serialPortDeviceName, serialPort):
                     # print("Active power of C phase(Grid Meter): %3dW  " % val) #, end='')
                     # sensorData['Pphase_c'] = val
 
-                    addrReg = 3 + (2 * 0x06) # Address register: 0006h
+                    addrReg = 3 + (2 * 0x06)  # Address register: 0006h
                     val = struct.unpack(">i", recvMsg[addrReg:addrReg + 4])[0]
                     # print("Total active power (Grid meter): %3dW  " % val) #, end='')
                     sensorData['Pactive'] = val
 
-                    addrReg = 3 + (2 * 0x08) # Address register: 0008h
+                    addrReg = 3 + (2 * 0x08)  # Address register: 0008h
                     val = struct.unpack(">i", recvMsg[addrReg:addrReg + 4])[0]
                     # print("Feed to grid (Grid meter): %.2fkWh" % (float(val) / 100)) #, end=''), end='')
                     sensorData['Egrid'] = float(val) / 100
 
-                    addrReg = 3 + (2 * 0x0A) # Address register: 000Ah
+                    addrReg = 3 + (2 * 0x0A)  # Address register: 000Ah
                     val = struct.unpack(">i", recvMsg[addrReg:addrReg + 4])[0]
                     # print("Consume to grid (Grid meter): %.2fkWh" % (float(val) / 100)) #, end=''), end='')
                     sensorData['Econs'] = float(val) / 100
@@ -220,27 +222,27 @@ def serialPortThread(serialPortDeviceName, serialPort):
                     sensorData = {}
                     # addrReg 0-2=Header (+3)
 
-                    addrReg = 3 + (2 * 0x00) # Address register: 0100h
+                    addrReg = 3 + (2 * 0x00)  # Address register: 0100h
                     val = struct.unpack(">h", recvMsg[addrReg:addrReg + 2])[0]
                     sensorData['Ubatt'] = float(val) / 10
                     # print("Battery voltage: %.1f V" % (float(val) / 10))
 
-                    addrReg = 3 + (2 * 0x01) # Address register: 0101h
+                    addrReg = 3 + (2 * 0x01)  # Address register: 0101h
                     val = struct.unpack(">h", recvMsg[addrReg:addrReg + 2])[0]
                     sensorData['Ibatt'] = float(val) / 10
                     # print("Battery current: %.1f A" % (float(val) / 10))
 
-                    addrReg = 3 + (2 * 0x02) # Address register: 0102h
+                    addrReg = 3 + (2 * 0x02)  # Address register: 0102h
                     val = struct.unpack(">h", recvMsg[addrReg:addrReg + 2])[0]
                     sensorData['SOC'] = float(val) / 10
                     # print("Battery SOC: %.1f %%" % (float(val) / 10))
 
-                    addrReg = 3 + (2 * 0x03) # Address register: 0103h
+                    addrReg = 3 + (2 * 0x03)  # Address register: 0103h
                     val = struct.unpack(">h", recvMsg[addrReg:addrReg + 2])[0]
                     sensorData['Status'] = val
                     # print("Battery status: %d" % val)
 
-                    addrReg = 3 + (2 * 0x04) # Address register: 0104h
+                    addrReg = 3 + (2 * 0x04)  # Address register: 0104h
                     val = struct.unpack(">h", recvMsg[addrReg:addrReg + 2])[0]
                     sensorData['Relay_status'] = val
                     # print("Battery relay status: %d" % val)
@@ -255,52 +257,52 @@ def serialPortThread(serialPortDeviceName, serialPort):
                     # sensorData['CellID_Umin'] = val
                     # # print("Cell ID of min cell voltage: %d" % val)
 
-                    addrReg = 3 + (2 * 0x07) # Address register: 0107h
+                    addrReg = 3 + (2 * 0x07)  # Address register: 0107h
                     val = struct.unpack(">h", recvMsg[addrReg:addrReg + 2])[0]
                     sensorData['Umin'] = float(val) / 1000
                     # print("Min cell voltage: %.3f V" % (float(val) / 1000))
 
-                    # addrReg = 3 + (2 * 0x08) # Address register: 0108h
+                    # addrReg = 3 + (2 * 0x08)  # Address register: 0108h
                     # val = struct.unpack(">h", recvMsg[addrReg:addrReg + 2])[0]
                     # sensorData['PackID_Umax'] = val
                     # # print("Pack ID of max cell voltage: %d" % val)
 
-                    # addrReg = 3 + (2 * 0x09) # Address register: 0109h
+                    # addrReg = 3 + (2 * 0x09)  # Address register: 0109h
                     # val = struct.unpack(">h", recvMsg[addrReg:addrReg + 2])[0]
                     # sensorData['CellID_Umax'] = val
                     # # print("Cell ID of max cell voltage: %d" % val)
 
-                    addrReg = 3 + (2 * 0x0A) # Address register: 010Ah
+                    addrReg = 3 + (2 * 0x0A)  # Address register: 010Ah
                     val = struct.unpack(">h", recvMsg[addrReg:addrReg + 2])[0]
                     sensorData['Umax'] = float(val) / 1000
                     # print("Max cell voltage: %.3f V" % (float(val) / 1000))
 
-                    addrReg = 3 + (2 * 0x0D) # Address register: 010Dh
+                    addrReg = 3 + (2 * 0x0D)  # Address register: 010Dh
                     val = struct.unpack(">h", recvMsg[addrReg:addrReg + 2])[0]
                     sensorData['Tmin'] = float(val) / 10
                     # print("Min cell temp: %.1f ℃" % (float(val) / 10))
 
-                    addrReg = 3 + (2 * 0x10) # Address register: 0110h
+                    addrReg = 3 + (2 * 0x10)  # Address register: 0110h
                     val = struct.unpack(">h", recvMsg[addrReg:addrReg + 2])[0]
                     sensorData['Tmax'] = float(val) / 10
                     # print("Max cell temp: %.1f ℃" % (float(val) / 10))
 
-                    addrReg = 3 + (2 * 0x11) # Address register: 0111h
+                    addrReg = 3 + (2 * 0x11)  # Address register: 0111h
                     val = struct.unpack(">h", recvMsg[addrReg:addrReg + 2])[0]
                     sensorData['Icharge_max'] = float(val) / 10
                     # print("Max charge current: %.1f A" % (float(val) / 10))
 
-                    addrReg = 3 + (2 * 0x12) # Address register: 0112h
+                    addrReg = 3 + (2 * 0x12)  # Address register: 0112h
                     val = struct.unpack(">h", recvMsg[addrReg:addrReg + 2])[0]
                     sensorData['Idischarge_max'] = float(val) / 10
                     # print("Max discharge current: %.1f A" % (float(val) / 10))
 
-                    addrReg = 3 + (2 * 0x13) # Address register: 0113h
+                    addrReg = 3 + (2 * 0x13)  # Address register: 0113h
                     val = struct.unpack(">h", recvMsg[addrReg:addrReg + 2])[0]
                     sensorData['Ucharge_cut_off'] = float(val) / 10
                     # print("Charge cut-off voltage: %.1f V" % (float(val) / 10))
 
-                    addrReg = 3 + (2 * 0x14) # Address register: 0114h
+                    addrReg = 3 + (2 * 0x14)  # Address register: 0114h
                     val = struct.unpack(">h", recvMsg[addrReg:addrReg + 2])[0]
                     sensorData['Udischarge_cut_off'] = float(val) / 10
                     # print("Discharge cut-off voltage: %.1f V" % (float(val) / 10))
@@ -329,32 +331,32 @@ def serialPortThread(serialPortDeviceName, serialPort):
                     # val = struct.unpack(">h", recvMsg[addrReg:addrReg + 2])[0]
                     # print("Battery type: %d" % val)
 
-                    addrReg = 3 + (2 * 0x1B) # Address register: 011Bh
+                    addrReg = 3 + (2 * 0x1B)  # Address register: 011Bh
                     val = struct.unpack(">h", recvMsg[addrReg:addrReg + 2])[0]
                     sensorData['SOH'] = float(val) / 10
                     # print("Battery SOH: %.1f %%" % (float(val) / 10))
 
-                    addrReg = 3 + (2 * 0x1C) # Address register: 011Ch
+                    addrReg = 3 + (2 * 0x1C)  # Address register: 011Ch
                     val = struct.unpack(">i", recvMsg[addrReg:addrReg + 4])[0]
                     sensorData['Warning'] = val
                     # print("Battery warning: %d" % val)
 
-                    addrReg = 3 + (2 * 0x1E) # Address register: 011Eh
+                    addrReg = 3 + (2 * 0x1E)  # Address register: 011Eh
                     val = struct.unpack(">i", recvMsg[addrReg:addrReg + 4])[0]
                     sensorData['Fault'] = val
                     # print("Battery fault: %d" % val)
 
-                    addrReg = 3 + (2 * 0x20) # Address register: 0120h
+                    addrReg = 3 + (2 * 0x20)  # Address register: 0120h
                     val = struct.unpack(">i", recvMsg[addrReg:addrReg + 4])[0]
                     sensorData['Echarge'] = float(val) / 10
                     # print("Charge energy: %.1f kWh" % (float(val) / 10))
 
-                    addrReg = 3 + (2 * 0x22) # Address register: 0122h
+                    addrReg = 3 + (2 * 0x22)  # Address register: 0122h
                     val = struct.unpack(">i", recvMsg[addrReg:addrReg + 4])[0]
                     sensorData['Edischarge'] = float(val) / 10
                     # print("Discharge energy: %.1f kWh" % (float(val) / 10))
 
-                    addrReg = 3 + (2 * 0x24) # Address register: 0124h
+                    addrReg = 3 + (2 * 0x24)  # Address register: 0124h
                     val = struct.unpack(">i", recvMsg[addrReg:addrReg + 4])[0]
                     sensorData['Echarge_from_grid'] = float(val) / 10
                     # print("Charge energy from grid: %.1f kWh" % (float(val) / 10))
@@ -367,17 +369,17 @@ def serialPortThread(serialPortDeviceName, serialPort):
                     sensorData = {}
                     # addrReg 0-2=Header (+3)
 
-                    addrReg = 3 + (2 * 0x00) # Address register: 0400h
+                    addrReg = 3 + (2 * 0x00)  # Address register: 0400h
                     val = struct.unpack(">h", recvMsg[addrReg:addrReg + 2])[0]
                     sensorData['Uinv_L1'] = float(val) / 10
                     # print("Inverter voltage L1: %.1f V" % (float(val) / 10))
 
-                    addrReg = 3 + (2 * 0x01) # Address register: 0401h
+                    addrReg = 3 + (2 * 0x01)  # Address register: 0401h
                     val = struct.unpack(">h", recvMsg[addrReg:addrReg + 2])[0]
                     sensorData['Uinv_L2'] = float(val) / 10
                     # print("Inverter voltage L2: %.1f V" % (float(val) / 10))
 
-                    addrReg = 3 + (2 * 0x02) # Address register: 0402h
+                    addrReg = 3 + (2 * 0x02)  # Address register: 0402h
                     val = struct.unpack(">h", recvMsg[addrReg:addrReg + 2])[0]
                     sensorData['Uinv_L3'] = float(val) / 10
                     # print("Inverter voltage L3: %.1f V" % (float(val) / 10))
@@ -406,22 +408,22 @@ def serialPortThread(serialPortDeviceName, serialPort):
                     # val = struct.unpack(">i", recvMsg[addrReg:addrReg + 4])[0]
                     # print("Inverter power L3: %d W" % val)
 
-                    addrReg = 3 + (2 * 0x0C) # Address register: 040Ch
+                    addrReg = 3 + (2 * 0x0C)  # Address register: 040Ch
                     val = struct.unpack(">i", recvMsg[addrReg:addrReg + 4])[0]
                     sensorData['Pinv'] = val
                     # print("Inverter power total: %d W" % val)
 
-                    addrReg = 3 + (2 * 0x0E) # Address register: 040Eh
+                    addrReg = 3 + (2 * 0x0E)  # Address register: 040Eh
                     val = struct.unpack(">h", recvMsg[addrReg:addrReg + 2])[0]
                     sensorData['Uback_L1'] = float(val) / 10
                     # print("Inverter backup voltage L1: %.1f V" % (float(val) / 10))
 
-                    addrReg = 3 + (2 * 0x0F) # Address register: 040Fh
+                    addrReg = 3 + (2 * 0x0F)  # Address register: 040Fh
                     val = struct.unpack(">h", recvMsg[addrReg:addrReg + 2])[0]
                     sensorData['Uback_L2'] = float(val) / 10
                     # print("Inverter backup voltage L2: %.1f V" % (float(val) / 10))
 
-                    addrReg = 3 + (2 * 0x10) # Address register: 0410h
+                    addrReg = 3 + (2 * 0x10)  # Address register: 0410h
                     val = struct.unpack(">h", recvMsg[addrReg:addrReg + 2])[0]
                     sensorData['Uback_L3'] = float(val) / 10
                     # print("Inverter backup voltage L3: %.1f V" % (float(val) / 10))
@@ -450,7 +452,7 @@ def serialPortThread(serialPortDeviceName, serialPort):
                     # val = struct.unpack(">i", recvMsg[addrReg:addrReg + 4])[0]
                     # print("Inverter backup power L3: %d W" % val)
 
-                    addrReg = 3 + (2 * 0x1A) # Address register: 041Ah
+                    addrReg = 3 + (2 * 0x1A)  # Address register: 041Ah
                     val = struct.unpack(">i", recvMsg[addrReg:addrReg + 4])[0]
                     sensorData['Pback'] = val
                     # print("Inverter backup power total: %d W" % val)
@@ -459,17 +461,17 @@ def serialPortThread(serialPortDeviceName, serialPort):
                     # val = struct.unpack(">h", recvMsg[addrReg:addrReg + 2])[0]
                     # print("Inverter grid frequency: %.2f Hz" % (float(val) / 100))
 
-                    addrReg = 3 + (2 * 0x1D) # Address register: 041Dh
+                    addrReg = 3 + (2 * 0x1D)  # Address register: 041Dh
                     val = struct.unpack(">h", recvMsg[addrReg:addrReg + 2])[0]
                     sensorData['U_PV1'] = float(val) / 10
                     # print("PV1 Voltage: %.1f V" % (float(val) / 10))
 
-                    addrReg = 3 + (2 * 0x1E) # Address register: 041Eh
+                    addrReg = 3 + (2 * 0x1E)  # Address register: 041Eh
                     val = struct.unpack(">h", recvMsg[addrReg:addrReg + 2])[0]
                     sensorData['I_PV1'] = float(val) / 10
                     # print("PV1 Current: %.1f A" % (float(val) / 10))
 
-                    addrReg = 3 + (2 * 0x1F) # Address register: 041Fh
+                    addrReg = 3 + (2 * 0x1F)  # Address register: 041Fh
                     val = struct.unpack(">i", recvMsg[addrReg:addrReg + 4])[0]
                     sensorData['P_PV1'] = val
                     # print("PV1 power: %d W" % val)
@@ -498,17 +500,17 @@ def serialPortThread(serialPortDeviceName, serialPort):
                     # val = struct.unpack(">i", recvMsg[addrReg:addrReg + 4])[0]
                     # print("PV3 power: %d W" % val)
 
-                    addrReg = 3 + (2 * 0x29) # Address register: 0429h
+                    addrReg = 3 + (2 * 0x29)  # Address register: 0429h
                     val = struct.unpack(">h", recvMsg[addrReg:addrReg + 2])[0]
                     inverterTemp = float(val) / 10
                     sensorData['TempInv'] = inverterTemp
 
-                    addrReg = 3 + (2 * 0x2A) # Address register: 042Ah
+                    addrReg = 3 + (2 * 0x2A)  # Address register: 042Ah
                     val = struct.unpack(">i", recvMsg[addrReg:addrReg + 4])[0]
                     sensorData['Warning'] = val
                     # print("Inverter warning: %d" % val)
 
-                    addrReg = 3 + (2 * 0x2C) # Address register: 042Ch
+                    addrReg = 3 + (2 * 0x2C)  # Address register: 042Ch
                     val = struct.unpack(">i", recvMsg[addrReg:addrReg + 4])[0]
                     sensorData['Fault'] = val
                     # print("Inverter fault: %d" % val)
@@ -550,18 +552,18 @@ def serialPortThread(serialPortDeviceName, serialPort):
 
             # Check if there is any message to send
             if not sendQueue.empty():
-                serialPort.setRTS(1) # Enable RS485 send
+                _serialPort.setRTS(1)  # Enable RS485 send
                 sendMsg = sendQueue.get_nowait()
                 msgLen = len(sendMsg)
                 # print(("SendMsg: %s" % sendMsg))
                 # printHexByteString(sendMsg)
-                serialPort.write(sendMsg)
+                _serialPort.write(sendMsg)
                 # 9600 baud->1bit=104,1667uS
                 # 1 byte=10bits->10*104,1667=1041,667uS
                 usleep(msgLen * 1041.6667)
                 # msleep(8)
 
-                serialPort.setRTS(0) # Disable RS485 send
+                _serialPort.setRTS(0)  # Disable RS485 send
                 # print("Tx ready")
 
         # In case the message contains unusual data
@@ -648,12 +650,12 @@ client.loop_start()
 time.sleep(2)
 
 try:
-    sendGetMeterStatusTimer = settings.SEND_METER_MSG_TIMER - 15 #[100ms]
-    sendGetBatteryStatusTimer = settings.SEND_BATTERY_MSG_TIMER - 3 #[100ms]
-    sendGetInverterStatusTimer = settings.SEND_INVERTER_MSG_TIMER - 28 #[100ms]
+    sendGetMeterStatusTimer = settings.SEND_METER_MSG_TIMER - 15  # [100ms]
+    sendGetBatteryStatusTimer = settings.SEND_BATTERY_MSG_TIMER - 3  # [100ms]
+    sendGetInverterStatusTimer = settings.SEND_INVERTER_MSG_TIMER - 28  # [100ms]
     sendInverterTempTimer = settings.SEND_INVERTER_TEMP_MSG_TIMER - 100
 
-    while not exit:
+    while not exitThread:
         # Get battery and  inverter status every 2.5 sec
         if sendGetInverterStatusTimer >= settings.SEND_INVERTER_MSG_TIMER:
             sendGetInverterStatusTimer = 0
@@ -680,19 +682,18 @@ try:
         if (inverterTemp is not None) and (sendInverterTempTimer >= settings.SEND_INVERTER_TEMP_MSG_TIMER):
             sendInverterTempTimer = 0
             # print("Inverter temp: %.1f ℃" % inverterTemp)
-            tempData = {}
-            tempData['Temperature'] = "%1.1f" % inverterTemp
+            tempData = {'Temperature': "%1.1f" % inverterTemp}
             mqtt_publish.single("huis/AlphaEss/Temp-Inverter/temp", json.dumps(tempData, separators=(', ', ':')), hostname=settings.MQTT_ServerIP, retain=True)
 
-        sendGetInverterStatusTimer += 1 #[100ms]
-        sendGetMeterStatusTimer += 1 #[100ms]
-        sendGetBatteryStatusTimer += 1 #[100ms]
-        sendInverterTempTimer += 1 #[100ms]
-        time.sleep(0.1) #[100ms]
+        sendGetInverterStatusTimer += 1  # [100ms]
+        sendGetMeterStatusTimer += 1  # [100ms]
+        sendGetBatteryStatusTimer += 1  # [100ms]
+        sendInverterTempTimer += 1  # [100ms]
+        time.sleep(0.1)  # [100ms]
 
 finally:
     if serialPort is not None:
-        serialPort.setRTS(0) # Disable RS485 send
+        serialPort.setRTS(0)  # Disable RS485 send
         closeSerialPort(serialPort)
         print('Closed serial port')
 

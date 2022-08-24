@@ -3,39 +3,39 @@
 import os
 import sys
 import signal
-import serial
-import select
-import tty
 import termios
 import time
 import traceback
 import socket
 import fcntl
 import errno
-import struct
 
 
 # external files/classes
 import modbus
-import settings
-
-current_sec_time = lambda: int(round(time.time()))
-current_milli_time = lambda: int(round(time.time() * 1000))
 
 MOXA_TCP_PORT = 4004
 MOXA_IP_ADDR = '192.168.5.225'
 
-exit = False
+exitProgram = False
 serialPort = None
 oldSettings = None
 MOXA_TCP_PORT = MOXA_TCP_PORT
 
 
+def current_sec_time():
+    return int(round(time.time()))
+
+
+def current_milli_time():
+    return int(round(time.time() * 1000))
+
+
 def signal_handler(_signal, frame):
-    global exit
+    global exitProgram
 
     print('You pressed Ctrl+C!')
-    exit = True
+    exitProgram = True
 
 
 def initAnykey():
@@ -43,10 +43,10 @@ def initAnykey():
 
     oldSettings = termios.tcgetattr(sys.stdin)
     newSettings = termios.tcgetattr(sys.stdin)
-    # newSettings[3] = newSettings[3] & ~(termios.ECHO | termios.ICANON) # lflags
-    newSettings[3] = newSettings[3] & ~(termios.ECHO | termios.ICANON) # lflags
+    # newSettings[3] = newSettings[3] & ~(termios.ECHO | termios.ICANON)  # lflags
+    newSettings[3] = newSettings[3] & ~(termios.ECHO | termios.ICANON)  # lflags
     newSettings[6][termios.VMIN] = 0  # cc
-    newSettings[6][termios.VTIME] = 0 # cc
+    newSettings[6][termios.VTIME] = 0  # cc
     termios.tcsetattr(sys.stdin, termios.TCSADRAIN, newSettings)
 
 
@@ -69,24 +69,24 @@ def printHelp():
     print()
 
 
-def printHexString(str):
-    for char in str:
+def printHexString(_str):
+    for char in _str:
         print("%02X " % (ord(char)), end='')
     print()
 
 
-def printHexByteString(recvMsg):
-    for x in recvMsg:
-        print("%02X " % x, end='')
+def printHexByteString(_str):
+    for v in _str:
+        print("%02X " % v, end='')
     print()
-    # print(" msg length: %d" % len(recvMsg))
+    # print(" msg length: %d" % len(_str))
 
 
-def sendModbusMsg(sendMsg, modBusAddr):
+def sendModbusMsg(sendMsg, _modBusAddr):
     sendMsgList = list(sendMsg)
-    sendMsgList[0] = chr(modBusAddr)
+    sendMsgList[0] = chr(_modBusAddr)
     # print(sendMsgList)
-    print("modBusAddr=%d" % modBusAddr, end='')
+    print("modBusAddr=%d" % _modBusAddr, end='')
     print(" -> send request to Storion T10: ", end='')
     sendMsg = ''
     for element in sendMsgList:
@@ -116,7 +116,7 @@ signal.signal(signal.SIGINT, signal_handler)
 # Give Home Assistant and Mosquitto the time to startup
 time.sleep(2)
 
-masterMsg = "\x55\x03\x00\x00\x00\x0D" #, 0x89, 0xDB]
+masterMsg = "\x55\x03\x00\x00\x00\x0D"  # 0x89, 0xDB]
 
 sendCrLf = False
 
@@ -154,7 +154,7 @@ autoSend = False
 printHelp()
 
 try:
-    while not exit:
+    while not exitProgram:
         if sendDelayTimer >= 2:
             sendDelayTimer = 0
             modBusAddr = modBusAddr + 1
@@ -170,7 +170,7 @@ try:
             # Key is pressed
             if ch == b'\x1b':
                 print("Escape pressed: Exit")
-                exit = True
+                exitProgram = True
             elif ch == b'r':
                 print("Reset powerAvg")
                 powerCntAdd = 0
@@ -209,7 +209,7 @@ try:
                 else:
                     # a "real" error occurred
                     print(e)
-                    exit = True
+                    exitProgram = True
             else:
                 msgLen = len(recvMsg)
                 print("Received msgLen: %d msg: " % msgLen, end='')
@@ -217,7 +217,7 @@ try:
                 autoSend = False
 
                 if msgLen == 8:
-                    pass #Ignore msg
+                    pass  # Ignore msg
                 #     # Register get request from Storion to ACR10
                     # print(" 8: ", end='')
                     # for x in recvMsg:
@@ -225,7 +225,7 @@ try:
                     # print()
                 #     print(" msg length: %d" % len(recvMsg))
                 elif msgLen == 21:
-                    pass # Ignore msg
+                    pass  # Ignore msg
                 else:
                     # Answer from ACR10
                     if msgLen == 81:
