@@ -476,17 +476,20 @@ def serialPortThread(serialPortDeviceName, _serialPort):
                     sensorData['P_PV1'] = val
                     # print("PV1 power: %d W" % val)
 
-                    # i = 69
-                    # val = struct.unpack(">h", recvMsg[addrReg:addrReg + 2])[0]
-                    # print("PV2 Voltage: %.1f V" % (float(val) / 10))
+                    addrReg = 3 + (2 * 0x21)  # Address register: 0421h
+                    val = struct.unpack(">h", recvMsg[addrReg:addrReg + 2])[0]
+                    sensorData['U_PV2'] = float(val) / 10
+                    # print("PV1 Voltage: %.1f V" % (float(val) / 10))
 
-                    # i = 71
-                    # val = struct.unpack(">h", recvMsg[addrReg:addrReg + 2])[0]
-                    # print("PV2 Current: %.1f A" % (float(val) / 10))
+                    addrReg = 3 + (2 * 0x22)  # Address register: 0422h
+                    val = struct.unpack(">h", recvMsg[addrReg:addrReg + 2])[0]
+                    sensorData['I_PV2'] = float(val) / 10
+                    # print("PV1 Current: %.1f A" % (float(val) / 10))
 
-                    # i = 73
-                    # val = struct.unpack(">i", recvMsg[addrReg:addrReg + 4])[0]
-                    # print("PV2 power: %d W" % val)
+                    addrReg = 3 + (2 * 0x23)  # Address register: 0423h
+                    val = struct.unpack(">i", recvMsg[addrReg:addrReg + 4])[0]
+                    sensorData['P_PV2'] = val
+                    # print("PV1 power: %d W" % val)
 
                     # i = 77
                     # val = struct.unpack(">h", recvMsg[addrReg:addrReg + 2])[0]
@@ -519,6 +522,8 @@ def serialPortThread(serialPortDeviceName, _serialPort):
                     # val = struct.unpack(">i", recvMsg[addrReg:addrReg + 4])[0]
                     # sensorData['Epv'] = float(val) / 10
                     # print("Total PV Energy: %.1f kWh" % (float(val) / 10))
+
+                    sensorData['P_PVtotal'] = sensorData['P_PV1'] + sensorData['P_PV2']
 
                     mqtt_publish.single("huis/AlphaEss/Inverter/power", json.dumps(sensorData, separators=(', ', ':')), hostname=settings.MQTT_ServerIP, retain=True)
 
